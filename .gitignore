@@ -1,0 +1,21 @@
+# Environment variables and secrets
+.env
+.env.*
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Database
+db.sqlite3
+
+# RAG vector database
+chroma_db/
+
+# Uploaded resumes and media
+media/
+
+# IDE
+.vscode/
