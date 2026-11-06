@@ -265,4 +265,5 @@ def get_resume_context(question, resume_text, user_id, resume_id):
         resume_id=resume_id,
     )
 
+
     return "\n\n".join(chunks)
