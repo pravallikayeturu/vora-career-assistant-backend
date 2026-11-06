@@ -178,17 +178,17 @@ def retrieve_relevant_chunks(
         return []
 
     # Restrict the search to the correct user and resume.
-    existing_count = len(
-    resume_collection.get(
-        where={
-            "$and": [
-                {"user_id": int(user_id)},
-                {"resume_id": int(resume_id)},
-            ]
-        },
-        include=[],
-    )["ids"]
-)
+    existing_ids = resume_collection.get(
+    where={
+        "$and": [
+            {"user_id": int(user_id)},
+            {"resume_id": int(resume_id)},
+        ]
+    },
+    include=[],
+)["ids"]
+
+existing_count = len(existing_ids)
 
     if existing_count == 0:
         return []
