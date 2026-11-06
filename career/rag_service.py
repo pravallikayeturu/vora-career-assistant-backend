@@ -86,6 +86,9 @@ def create_embeddings(texts):
     This does not call the Gemini API.
     """
 
+    if not texts:
+        return []
+
     model = get_embedding_model()
 
     embeddings = model.encode(
@@ -124,7 +127,6 @@ def index_resume(resume_text, user_id, resume_id):
     ]
 
     # Remove previously indexed chunks for this resume.
-    # ChromaDB's where filter also limits this to the owner.
     resume_collection.delete(
         where={
             "$and": [
@@ -145,7 +147,7 @@ def index_resume(resume_text, user_id, resume_id):
         for index in range(len(chunks))
     ]
 
-    # ChromaDB add() stores chunks, vectors, and metadata.
+    # Store chunks, embeddings, and metadata.
     resume_collection.add(
         ids=chunk_ids,
         documents=chunks,
@@ -179,22 +181,24 @@ def retrieve_relevant_chunks(
 
     # Restrict the search to the correct user and resume.
     existing_ids = resume_collection.get(
-    where={
-        "$and": [
-            {"user_id": int(user_id)},
-            {"resume_id": int(resume_id)},
-        ]
-    },
-    include=[],
-)["ids"]
+        where={
+            "$and": [
+                {"user_id": int(user_id)},
+                {"resume_id": int(resume_id)},
+            ]
+        },
+        include=[],
+    )["ids"]
 
-existing_count = len(existing_ids)
+    existing_count = len(existing_ids)
 
     if existing_count == 0:
         return []
 
+    # Create embedding for the user's question.
     query_embedding = create_embeddings([question])[0]
 
+    # Search only within the selected resume.
     results = resume_collection.query(
         query_embeddings=[query_embedding],
         n_results=min(top_k, existing_count),
@@ -227,12 +231,14 @@ def get_resume_context(question, resume_text, user_id, resume_id):
     existing full-text resume context.
     """
 
-    if not resume_text or not resume_text.strip():
+    if not isinstance(resume_text, str) or not resume_text.strip():
         return ""
 
-    # Index the resume if this is the first request.
-    count = len(
-    resume_collection.get(
+    if not user_id or not resume_id:
+        return ""
+
+    # Check whether this resume is already indexed.
+    existing_ids = resume_collection.get(
         where={
             "$and": [
                 {"user_id": int(user_id)},
@@ -241,15 +247,18 @@ def get_resume_context(question, resume_text, user_id, resume_id):
         },
         include=[],
     )["ids"]
-)
 
-    if count == 0:
+    existing_count = len(existing_ids)
+
+    # Index the resume if this is the first request.
+    if existing_count == 0:
         index_resume(
             resume_text=resume_text,
             user_id=user_id,
             resume_id=resume_id,
         )
 
+    # Retrieve relevant chunks.
     chunks = retrieve_relevant_chunks(
         question=question,
         user_id=user_id,
