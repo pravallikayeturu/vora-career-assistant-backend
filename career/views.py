@@ -759,3 +759,114 @@ CURRENT USER QUESTION:
             },
             status=status.HTTP_200_OK
         )
+
+
+
+
+        # ======================================
+    # 7. CALL GEMINI WITH MODEL FALLBACK
+    # ======================================
+
+    models = [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+    ]
+
+    last_error = None
+
+    for model in models:
+        try:
+            print(f"VORA: Trying Gemini model: {model}")
+
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt
+            )
+
+            answer = getattr(response, "text", None)
+
+            if answer and answer.strip():
+                print(f"VORA: Response generated using {model}")
+
+                return Response(
+                    {"answer": answer.strip()},
+                    status=status.HTTP_200_OK
+                )
+
+            print(f"VORA: Empty response from {model}")
+
+        except Exception as error:
+            last_error = error
+            print(f"VORA: Model {model} failed: {error}")
+
+    # Both models failed
+    print(f"VORA: All configured models failed. Last error: {last_error}")
+
+    if isinstance(last_error, errors.APIError):
+        error_code = getattr(last_error, "code", None)
+
+        if error_code == 429:
+            message = (
+                "The AI request limit has been reached. "
+                "Please try again later. 😊"
+            )
+
+        elif error_code in (500, 502, 503, 504):
+            message = (
+                "The AI service is temporarily unavailable. "
+                "Please try again in a few minutes. 😊"
+            )
+
+        else:
+            message = (
+                "I couldn't generate a response. "
+                "Please check the backend logs and try again. 😊"
+            )
+
+    else:
+        message = (
+            "Something went wrong while generating your response. "
+            "Please check the backend logs. 😊"
+        )
+
+    return Response(
+        {"answer": message},
+        status=status.HTTP_200_OK
+    )
+    # ======================================
+    # 8. HANDLE FAILURE AFTER ALL MODELS
+    # ======================================
+
+    if isinstance(last_error, errors.APIError):
+        error_code = getattr(last_error, "code", None)
+
+        if error_code == 429:
+            message = (
+                "The AI request limit has been reached. "
+                "Please try again later. 😊"
+            )
+
+        elif error_code in (500, 502, 503, 504):
+            message = (
+                "The AI service is temporarily unavailable. "
+                "Please try again in a few minutes. 😊"
+            )
+
+        else:
+            message = (
+                "I couldn't generate a response. "
+                "Please check the backend logs and try again. 😊"
+            )
+
+    else:
+        message = (
+            "Something went wrong while generating your response. "
+            "Please check the backend logs. 😊"
+        )
+
+    print(f"VORA: All configured Gemini models failed. Last error: {last_error}")
+
+    return Response(
+        {"answer": message},
+        status=status.HTTP_200_OK,
+    )

@@ -54,9 +54,7 @@ Focus on suitable job roles based on the resume.
 
     models = [
         "gemini-3.8-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-3.8-flash"
-    ]
+        "gemini-3.5-flash-lite"    ]
 
     last_error = None
 

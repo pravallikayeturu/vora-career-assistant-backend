@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+import dj_database_url
 from dotenv import load_dotenv
 
 
@@ -26,13 +27,14 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 if not SECRET_KEY:
-    raise ValueError(
-        "DJANGO_SECRET_KEY is missing from the backend .env file."
-    )
+    raise ValueError("DJANGO_SECRET_KEY is missing.")
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1"
+).split(",")
 
 
 # --------------------------------------------------
@@ -98,26 +100,31 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # --------------------------------------------------
-# DATABASE - POSTGRESQL
+# DATABASE - SUPABASE POSTGRESQL / LOCAL POSTGRESQL
 # --------------------------------------------------
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "vora_db"),
-        "USER": os.getenv("POSTGRES_USER", "postgres"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+VORA_DATABASE_URL = os.getenv("VORA_SUPABASE_URL") or os.getenv("DATABASE_URL")
+
+if VORA_DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=VORA_DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
-}
 
-if not DATABASES["default"]["PASSWORD"]:
-    raise ValueError(
-        "POSTGRES_PASSWORD is missing from the backend .env file."
-    )
-
-
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB", "vora_db"),
+            "USER": os.getenv("POSTGRES_USER", "postgres"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+            "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        }
+    }
 # --------------------------------------------------
 # PASSWORD VALIDATION
 # --------------------------------------------------
@@ -208,6 +215,10 @@ SIMPLE_JWT = {
 # --------------------------------------------------
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
 ]

@@ -178,14 +178,17 @@ def retrieve_relevant_chunks(
         return []
 
     # Restrict the search to the correct user and resume.
-    existing_count = resume_collection.count(
+    existing_count = len(
+    resume_collection.get(
         where={
             "$and": [
                 {"user_id": int(user_id)},
                 {"resume_id": int(resume_id)},
             ]
-        }
-    )
+        },
+        include=[],
+    )["ids"]
+)
 
     if existing_count == 0:
         return []
@@ -228,13 +231,16 @@ def get_resume_context(question, resume_text, user_id, resume_id):
         return ""
 
     # Index the resume if this is the first request.
-    count = resume_collection.count(
-    where={
-        "$and": [
-            {"user_id": int(user_id)},
-            {"resume_id": int(resume_id)},
-        ]
-    }
+    count = len(
+    resume_collection.get(
+        where={
+            "$and": [
+                {"user_id": int(user_id)},
+                {"resume_id": int(resume_id)},
+            ]
+        },
+        include=[],
+    )["ids"]
 )
 
     if count == 0:
